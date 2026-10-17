@@ -981,7 +981,8 @@ impl LightcraftApp {
     /// One edit of `control` from a MIDI controller, inside that control's interaction (one undo step).
     /// Nothing happens without an active photo.
     fn midi_edit(&mut self, now: f64, control: String, command: &str, params: Value) {
-        if self.session.active().is_none() {
+        // a mouse drag owns the engine's interaction slot until it ends
+        if self.session.active().is_none() || self.ui.dragging_control.is_some() {
             return;
         }
         if self.midi_active.as_ref().is_some_and(|(c, _)| *c != control) {

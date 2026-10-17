@@ -90,3 +90,29 @@ fn midi_reload_runs_the_hosts_reloader_and_reports_its_answer() {
     let mut bare = LightcraftApp::new(lightcraft_engine::Session::with_demo(), Services { png: None, ..Default::default() });
     assert!(bare.run("midi.reload", json!({})).unwrap_err().contains("not available"));
 }
+
+#[test]
+fn a_mouse_drag_started_inside_the_midi_idle_window_stays_one_undo_step() {
+    use crate::panels::edit::apply_slider_out;
+    use crate::widgets::SliderOut;
+
+    let (mut h, tx) = edit_view();
+    let start = value(&h, "light.contrast");
+    send(&tx, Message::ControlChange { channel: 0, cc: 17, value: 1 });
+    h.step();
+
+    // the mouse takes over within the idle window and holds past it
+    let spec = lightcraft_develop::controls::find("light.contrast").unwrap();
+    let set = |app: &mut LightcraftApp, v: f64| app.run("develop.set", json!({"control": "light.contrast", "value": v}));
+    apply_slider_out(&mut h.app, spec, SliderOut { value: Some(10.0), drag_started: true, ..Default::default() }, set);
+    let held_from = h.time();
+    while h.time() - held_from < 0.6 {
+        h.step();
+    }
+    apply_slider_out(&mut h.app, spec, SliderOut { value: Some(20.0), ..Default::default() }, set);
+    apply_slider_out(&mut h.app, spec, SliderOut { value: Some(30.0), drag_stopped: true, ..Default::default() }, set);
+    assert_eq!(value(&h, "light.contrast"), 30.0);
+
+    h.app.run("edit.undo", json!({})).unwrap();
+    assert_eq!(value(&h, "light.contrast"), start);
+}
