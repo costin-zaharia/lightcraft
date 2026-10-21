@@ -45,7 +45,4 @@ bindings = [
   # Play applies Auto Settings, Pause toggles Black & White
   { on = "note", number = 94, run = "develop.auto" },
   { on = "note", number = 93, run = "develop.treatment" },
-
-  # Record deletes the photo: it moves to Recently Deleted, so Undo and Restore bring it back
-  { on = "note", number = 95, run = "photo.delete" },
 ]

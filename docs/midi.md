@@ -72,7 +72,7 @@ supported: its button CC numbers overlap the knobs and faders.
 | Right, Down | notes 99, 97 | `library.next` |
 | Play | note 94 | `develop.auto` (Auto Settings) |
 | Pause | note 93 | `develop.treatment` (toggles Black & White) |
-| Record | note 95 | `photo.delete` (moves to Recently Deleted: undoable, the file stays) |
+| Record | note 95 | (unbound: a stray press must not remove a photo; bind `photo.delete` yourself if you want it, it moves to Recently Deleted and is undoable) |
 
 The strip buttons, the other transport buttons and the LEDs are not used. More examples are welcome.
 

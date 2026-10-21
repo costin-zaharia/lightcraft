@@ -322,7 +322,7 @@ mod tests {
     #[test]
     fn the_smc_mixer_example_is_valid() {
         let map = smc();
-        assert_eq!(map.len(), 8 + 8 + 6 + 3);
+        assert_eq!(map.len(), 8 + 8 + 6 + 2);
         assert!(map.wants_input("SMC-Mixer"));
         assert!(!map.wants_input("MIDIIN2 (SMC-Mixer)"));
     }
@@ -385,7 +385,7 @@ bindings = []"#
         assert_eq!(map.action(press(47)), run("photo.rotateRight"));
         assert_eq!(map.action(press(98)), run("library.previous"));
         assert_eq!(map.action(press(99)), run("library.next"));
-        assert_eq!(map.action(press(95)), run("photo.delete")); // Record
+        assert_eq!(map.action(press(95)), None); // Record: deliberately unbound
         assert_eq!(map.action(press(94)), run("develop.auto")); // Play
         assert_eq!(map.action(press(93)), run("develop.treatment")); // Pause
         assert_eq!(map.action(press(92)), None); // Forward
