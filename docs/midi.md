@@ -50,7 +50,7 @@ Each binding has a **source** and one **target**. The first binding that matches
 | `nudge` | A develop control id. **Relative**: each tick moves it by `step` (default 1), through `develop.adjust`. Goes with `control_change`. |
 | `encoding` | With `nudge`: how the knob writes direction. `"sign_magnitude"` (default; 1–63 clockwise, 65–127 counter-clockwise by value − 64, as the SMC-Mixer and Mackie surfaces do), `"twos_complement"` (127 = −1) or `"offset"` (64 = no move, above clockwise). |
 | `step` | With `nudge`: the amount per tick, in the control's units (Kelvin for `wb.temp`). |
-| `run` | A command id, run with no parameters. Goes with `note`, or `control_change` for a pedal or button that sends CC (runs on a non-zero value). |
+| `run` | A command id, run with no parameters (a command that needs some, like `develop.set`, is rejected when the map loads). Goes with `note`, or `control_change` for a pedal or button that sends CC (runs on a non-zero value). |
 
 Control ids are the Develop sliders (`crates/develop/src/controls.rs`); command ids are the ones in
 [control-protocol.md](control-protocol.md). Unknown ids, out-of-range numbers, unknown keys and targets that

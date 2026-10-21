@@ -121,6 +121,17 @@ struct Binding {
 }
 
 impl Binding {
+    /// Whether the binding listens to this message (source, number and channel), whatever its value.
+    fn matches(&self, msg: Message) -> bool {
+        let on_channel = |ch: u8| self.channel.is_none_or(|c| c == ch);
+        match (self.source, msg) {
+            (Source::ControlChange(n), Message::ControlChange { channel, cc, .. }) => n == cc && on_channel(channel),
+            (Source::PitchBend, Message::PitchBend { channel, .. }) => on_channel(channel),
+            (Source::Note(n), Message::NoteOn { channel, note }) => n == note && on_channel(channel),
+            _ => false,
+        }
+    }
+
     fn action(&self, msg: Message) -> Option<Action> {
         let on_channel = |ch: u8| self.channel.is_none_or(|c| c == ch);
         match (self.source, msg) {
@@ -182,6 +193,19 @@ struct Raw {
     encoding: Option<Encoding>,
 }
 
+/// Whether a command can be run with an empty object: its parameter description (`{}`, `{ids?}`,
+/// `{ids?, advance?: bool}`, …) lists no field, or only optional ones that pick photos or toggle (the
+/// selection is used then). Other optional fields (`develop.set`'s) still need a value to do anything.
+fn runs_without_params(params: &str) -> bool {
+    let Some(inner) = params.trim().strip_prefix('{') else { return false };
+    let inner = inner.split('}').next().unwrap_or_default();
+    inner
+        .split(',')
+        .map(str::trim)
+        .filter(|f| !f.is_empty())
+        .all(|f| matches!(f.split(':').next().map(str::trim_end), Some("ids?" | "id?" | "advance?" | "bw?")))
+}
+
 impl Raw {
     fn bind(self) -> Result<Binding, String> {
         let channel = match self.channel {
@@ -212,8 +236,12 @@ impl Raw {
                 Target::Nudge { control: control(&id)?, step, encoding: self.encoding.unwrap_or_default() }
             }
             (None, None, Some(id)) if self.on != Kind::PitchBend => {
-                if crate::cmd::find_command(&id).is_none() {
+                let Some(spec) = crate::cmd::find_command(&id) else {
                     return Err(format!("{id} is not a command"));
+                };
+                // a message carries no parameters: the command is run with `{}`
+                if !runs_without_params(spec.params) {
+                    return Err(format!("{id} needs parameters ({}), which a MIDI message cannot give", spec.params));
                 }
                 Target::Run(id)
             }
@@ -276,7 +304,9 @@ impl Map {
 
     /// What a message does, if anything.
     pub fn action(&self, msg: Message) -> Option<Action> {
-        self.bindings.iter().find_map(|b| b.action(msg))
+        // the first binding that listens to the message decides, even when it ignores this value (a
+        // button release, a knob that did not move): a later binding must not take over
+        self.bindings.iter().find(|b| b.matches(msg)).and_then(|b| b.action(msg))
     }
 }
 
@@ -376,6 +406,48 @@ bindings = []"#
         assert_eq!(map.action(cc(16, 64)), None);
         assert_eq!(map.action(cc(15, 1)), None);
         assert_eq!(map.action(cc(24, 1)), None);
+    }
+
+    #[test]
+    fn a_run_binding_needs_a_command_that_takes_no_parameters() {
+        let bind = |run: &str| {
+            Map::from_toml(&format!(
+                "[[bindings]]
+on = \"note\"
+number = 1
+run = \"{run}\"
+"
+            ))
+        };
+        assert!(bind("develop.auto").is_ok());
+        assert!(bind("photo.rotateLeft").is_ok()); // {ids?}
+        let err = bind("develop.set").unwrap_err();
+        assert!(err.contains("needs parameters"), "{err}");
+        assert!(runs_without_params("{}"));
+        assert!(runs_without_params("{ids?, advance?: bool}"));
+        assert!(runs_without_params("{} → {total}"));
+        assert!(!runs_without_params("{control?: controlId, value?: number}"));
+        assert!(!runs_without_params("{id}"));
+        assert!(!runs_without_params("{id, name}"));
+        assert!(!runs_without_params("{index}"));
+    }
+
+    #[test]
+    fn the_first_binding_that_listens_decides_even_when_it_ignores_the_value() {
+        let map = Map::from_toml(
+            "[[bindings]]
+on = \"control_change\"
+number = 5
+run = \"develop.auto\"
+             [[bindings]]
+on = \"control_change\"
+number = 5
+run = \"develop.treatment\"
+",
+        )
+        .unwrap();
+        assert_eq!(map.action(cc(5, 127)), run("develop.auto"));
+        assert_eq!(map.action(cc(5, 0)), None); // the release of the first, not a press of the second
     }
 
     #[test]
