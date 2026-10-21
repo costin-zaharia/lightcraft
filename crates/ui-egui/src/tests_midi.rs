@@ -59,9 +59,10 @@ fn a_fader_sets_and_a_knob_nudges_and_each_turn_is_one_undo_step() {
     assert_eq!(value(&h, "wb.tint"), tint + 2.0);
 
     // after the idle gap the turns are closed: two undos put both controls back
-    std::thread::sleep(Duration::from_millis(600));
-    h.step();
-    h.step();
+    let idle_from = h.time();
+    while h.time() - idle_from < 0.6 {
+        h.step();
+    }
     h.app.run("edit.undo", json!({})).unwrap();
     assert_eq!(value(&h, "wb.tint"), tint);
     h.app.run("edit.undo", json!({})).unwrap();

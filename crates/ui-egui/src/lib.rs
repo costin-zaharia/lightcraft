@@ -985,6 +985,10 @@ impl LightcraftApp {
         if self.session.active().is_none() || self.ui.dragging_control.is_some() {
             return;
         }
+        // the engine's interaction was ended elsewhere: this turn no longer owns anything
+        if self.session.interaction.is_none() {
+            self.midi_active = None;
+        }
         if self.midi_active.as_ref().is_some_and(|(c, _)| *c != control) {
             self.end_midi_interaction();
         }

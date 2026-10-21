@@ -294,6 +294,7 @@ fn panel(app: &mut LightcraftApp, ctx: &egui::Context, p: RightPanel, name: &str
     if p != RightPanel::Masking && app.ui.tool != "wbPicker" {
         app.ui.tool.clear();
     }
+    app.end_midi_interaction();
     let _ = app.session.end_interaction();
 }
 
@@ -723,6 +724,7 @@ pub fn run_ui_command(app: &mut LightcraftApp, id: &str, p: &Value) -> Option<Re
             if app.ui.fullscreen {
                 app.ui.zoom = Zoom::Fit;
                 app.ui.tool.clear();
+                app.end_midi_interaction();
                 let _ = app.session.end_interaction();
             }
             Ok(json!({"fullscreen": app.ui.fullscreen}))
@@ -1266,6 +1268,7 @@ pub fn run_ui_command(app: &mut LightcraftApp, id: &str, p: &Value) -> Option<Re
             // Return commits a tool panel (crop, remove, red eye, masking): back to Edit
             use RightPanel::*;
             if app.ui.dialog.is_none() && matches!(app.ui.right, Crop | Remove | RedEye | Masking) {
+                app.end_midi_interaction();
                 let _ = app.session.end_interaction();
                 app.ui.tool.clear();
                 app.ui.right = Edit;
