@@ -442,7 +442,7 @@ run = \"develop.auto\"
              [[bindings]]
 on = \"control_change\"
 number = 5
-run = \"develop.treatment\"
+set = \"light.exposure\"
 ",
         )
         .unwrap();

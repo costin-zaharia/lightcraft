@@ -27,7 +27,11 @@ fn map_path() -> Option<PathBuf> {
 
 /// The map in `path`: `Ok(None)` when there is no file, an error saying what is wrong with it otherwise.
 fn read_map(path: Option<PathBuf>) -> Result<Option<(Map, PathBuf)>, String> {
-    let Some(path) = path.filter(|p| p.exists()) else { return Ok(None) };
+    let Some(path) = path else { return Ok(None) };
+    // only a missing file means "no map"; a folder that cannot be inspected is an error, so a reload keeps the map in use
+    if !path.try_exists().map_err(|e| format!("MIDI map {} could not be read: {e}", path.display()))? {
+        return Ok(None);
+    }
     let text = std::fs::read_to_string(&path).map_err(|e| format!("MIDI map {} could not be read: {e}", path.display()))?;
     let map = Map::from_toml(&text).map_err(|e| format!("MIDI map {} was not used: {e}", path.display()))?;
     Ok(Some((map, path)))
@@ -81,6 +85,8 @@ fn spawn(ctx: egui::Context, tx: std::sync::mpsc::Sender<Action>, shared: Shared
     const RESCAN: Duration = Duration::from_secs(3);
 
     fn scan(tx: &Sender<Action>, ctx: &egui::Context, shared: &Shared, map: &Map, open: &mut HashMap<String, MidiInputConnection<()>>) {
+        // ports the map no longer selects close even when the probe below fails
+        open.retain(|name, _| map.wants_input(name));
         let Ok(probe) = MidiInput::new("LightCraft probe") else { return };
         let names: Vec<String> = probe.ports().iter().filter_map(|p| probe.port_name(p).ok()).filter(|n| map.wants_input(n)).collect();
         // closing a vanished or no longer wanted port frees its slot, so it can be opened again later
